@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Повітряна Оборона - Україна</title>
+  <style>
+    :root {
+      --bg1: #07111f;
+      --panel: rgba(10, 18, 28, 0.85);
+      --accent: #ffb347;
+      --accent2: #66d9ff;
+      --danger: #ff5c5c;
+      --good: #6ef3a0;
+      --text: #eaf6ff;
+      --blue-uk: #4169e1;
+      --yellow-uk: #ffd700;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #0a1428 0%, #12273e 50%, #050b12 100%);
+      color: var(--text);
+      font-family: 'Arial', sans-serif;
+      overflow: hidden;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    #gameWrap {
+      position: relative;
+      width: 1400px;
+      height: 800px;
+      border: 3px solid rgba(255, 200, 0, 0.25);
+      background: linear-gradient(#0e1b2d, #081722);
+      box-shadow: 0 0 60px rgba(255, 179, 71, 0.15);
+      overflow: hidden;
+      display: flex;
+    }
+
+    .map-section {
+      flex: 1;
+      position: relative;
+      background: linear-gradient(135deg, #d9d2c6 0%, #e8e3da 100%);
+      border-right: 2px solid rgba(0,0,0,0.15);
+      overflow: hidden;
+      cursor: crosshair;
+    }
+
+    .control-section {
+      width: 340px;
+      background: linear-gradient(180deg, #0c1a2b 0%, #061018 100%);
+      border-left: 2px solid rgba(255, 200, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      gap: 15px;
+      overflow-y: auto;
+    }
+
+    .control-panel {
+      background: rgba(15, 25, 40, 0.9);
+      border: 1px solid rgba(255, 200, 0, 0.2);
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .control-panel h3 {
+      margin: 0 0 12px 0;
+      color: var(--accent);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 7px 0;
+      font-size: 11px;
+      color: var(--text);
+    }
+
+    .stat-value {
+      color: var(--good);
+      font-weight: bold;
+    }
+
+    .stat-value.danger {
+      color: var(--danger);
+    }
+
+    .stat-value.warning {
+      color: #ffcc00;
+    }
+
+    .stat-value.blue {
+      color: var(--blue-uk);
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #0066cc 0%, #0052a3 100%);
+      color: #ffd700;
+      border: 2px solid #ffd700;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 100, 200, 0.3);
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 100, 200, 0.5);
+      background: linear-gradient(135deg, #0080ff 0%, #0066cc 100%);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .territory-info {
+      font-size: 10px;
+      background: rgba(65, 105, 225, 0.15);
+      border-left: 3px solid #4169e1;
+      padding: 8px;
+      border-radius: 4px;
+      color: #a0c8ff;
+      line-height: 1.4;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: var(--panel);
+      border: 1px solid rgba(255, 200, 0, 0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      z-index: 5;
+      font-weight: bold;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+      font-size: 11px;
+    }
+
+    .hud .stat {
+      margin: 5px 0;
+    }
+
+    .hud .label {
+      color: var(--accent2);
+      display: inline-block;
+      min-width: 80px;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameWrap">
+    <div class="map-section">
+      <div class="hud">
+        <div class="stat"><span class="label">Рахунок:</span> <span id="score">0</span></div>
+        <div class="stat"><span class="label">Життя:</span> <span id="lives">3</span></div>
+        <div class="stat"><span class="label">Хвиля:</span> <span id="wave">1</span></div>
+      </div>
+      <canvas id="mapCanvas"></canvas>
+    </div>
+
+    <div class="control-section">
+      <div class="control-panel">
+        <h3>⚔️ Загрози</h3>
+        <div class="stat-row">
+          <span>Су-30/35:</span>
+          <span class="stat-value warning" id="su30count">0</span>
+        </div>
+        <div class="stat-row">
+          <span>Су-57:</span>
+          <span class="stat-value danger" id="su57count">0</span>
+        </div>
+        <div class="stat-row">
+          <span>Ракети:</span>
+          <span class="stat-value danger" id="missileCount">0</span>
+        </div>
+      </div>
+
+      <div class="control-panel">
+        <h3>🛡️ Українське ППО</h3>
+        <div class="stat-row">
+          <span>Патріот:</span>
+          <span class="stat-value blue">Активна</span>
+        </div>
+        <div class="stat-row">
+          <span>Бук:</span>
+          <span class="stat-value blue">Активна</span>
+        </div>
+        <div class="stat-row">
+          <span>Оса:</span>
+          <span class="stat-value blue">Активна</span>
+        </div>
+        <button class="btn" id="autoBtn" style="width: 100%; margin-top: 10px;">АВТОМАТИЧНИЙ ВОГОНЬ</button>
+      </div>
+
+      <div class="control-panel">
+        <h3>✈️ Наші Винищувачі</h3>
+        <div class="stat-row">
+          <span>Су-27:</span>
+          <span class="stat-value blue" id="su27count">0</span>
+        </div>
+        <div class="stat-row">
+          <span>МіГ-29:</span>
+          <span class="stat-value blue" id="mig29count">0</span>
+        </div>
+        <div class="stat-row">
+          <span>F-16:</span>
+          <span class="stat-value blue" id="f16count">0</span>
+        </div>
+      </div>
+
+      <div class="control-panel">
+        <h3>📡 Російські Бази</h3>
+        <div class="stat-row">
+          <span>Курськ:</span>
+          <span class="stat-value">250км</span>
+        </div>
+        <div class="stat-row">
+          <span>Воронеж:</span>
+          <span class="stat-value">280км</span>
+        </div>
+        <div class="stat-row">
+          <span>Брянськ:</span>
+          <span class="stat-value">310км</span>
+        </div>
+      </div>
+
+      <div class="control-panel">
+        <h3>📊 Територія</h3>
+        <div class="stat-row">
+          <span>Окупована:</span>
+          <span class="stat-value danger" id="occupied">15%</span>
+        </div>
+        <div class="stat-row">
+          <span>Під контролем:</span>
+          <span class="stat-value" id="safe">85%</span>
+        </div>
+      </div>
+
+      <div class="territory-info">
+        <strong>Захищай Україну!</strong><br>
+        Клацай по цілі для блокування. SPACE для вогню. Вищі цілі складніше влучити!
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const mapCanvas = document.getElementById('mapCanvas');
+    const mapCtx = mapCanvas.getContext('2d');
+
+    mapCanvas.width = mapCanvas.offsetWidth;
+    mapCanvas.height = mapCanvas.offsetHeight;
+
+    const scoreEl = document.getElementById('score');
+    const livesEl = document.getElementById('lives');
+    const waveEl = document.getElementById('wave');
+    const autoBtn = document.getElementById('autoBtn');
+
+    const WIDTH = mapCanvas.width;
+    const HEIGHT = mapCanvas.height;
+
+    let score = 0;
+    let lives = 3;
+    let wave = 1;
+    let gameOver = false;
+    let autoMode = true;
+
+    const aircraft = [];
+    const playerAircraft = [];
+    const missiles = [];
+    const bullets = [];
+    const explosions = [];
+    const particles = [];
+    let selectedTarget = null;
+
+    const ENEMY_AIRCRAFT = {
+      'Су-30': {
+        speed: { min: 1200, max: 1400 },
+        altitude: [1500, 4500, 8000],
+        hp: 2,
+        missiles: 2,
+        color: '#c44536',
+        size: 14
+      },
+      'Су-35': {
+        speed: { min: 1300, max: 1500 },
+        altitude: [1800, 5500, 9500],
+        hp: 2,
+        missiles: 2,
+        color: '#d95654',
+        size: 14
+      },
+      'Су-57': {
+        speed: { min: 1400, max: 1600 },
+        altitude: [2500, 6500, 11000],
+        hp: 3,
+        missiles: 3,
+        color: '#8b0000',
+        size: 15
+      }
+    };
+
+    const PLAYER_AIRCRAFT = {
+      'Су-27': {
+        speed: { min: 1300, max: 1550 },
+        altitude: [2000, 5000, 9000],
+        hp: 2,
+        missiles: 4,
+        color: '#0066ff',
+        size: 14
+      },
+      'МіГ-29': {
+        speed: { min: 1350, max: 1600 },
+        altitude: [1500, 5500, 10000],
+        hp: 1,
+        missiles: 3,
+        color: '#0088ff',
+        size: 12
+      },
+      'F-16': {
+        speed: { min: 1500, max: 1750 },
+        altitude: [1200, 6000, 11000],
+        hp: 2,
+        missiles: 3,
+        color: '#00aaff',
+        size: 13
+      }
+    };
+
+    const defenseBase = {
+      x: WIDTH * 0.22,
+      y: HEIGHT * 0.5,
+      altitude: 520,
+      radius: 16,
+      speed: 280,
+      shootInterval: 0.1,
+      lastShot: 0,
+      range: 220,
+      maxAltitude: 15000,
+      name: 'Патріот'
+    };
+
+    const enemyBases = [
+      { name: 'Курськ', x: WIDTH * 0.88, y: HEIGHT * 0.2 },
+      { name: 'Воронеж', x: WIDTH * 0.92, y: HEIGHT * 0.45 },
+      { name: 'Брянськ', x: WIDTH * 0.85, y: HEIGHT * 0.65 }
+    ];
+
+    const occupiedZones = [
+      { x: WIDTH * 0.65, y: HEIGHT * 0.1, w: WIDTH * 0.35, h: HEIGHT * 0.28 },
+      { x: WIDTH * 0.58, y: HEIGHT * 0.42, w: WIDTH * 0.42, h: HEIGHT * 0.28 },
+      { x: WIDTH * 0.52, y: HEIGHT * 0.68, w: WIDTH * 0.48, h: HEIGHT * 0.32 }
+    ];
+
+    function rand(min, max) { return Math.random() * (max - min) + min; }
+    function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+    function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+
+    function getAltitudeYPos(altitude) {
+      return HEIGHT - (altitude / defenseBase.maxAltitude) * (HEIGHT * 0.85);
+    }
+
+    function playTone(type, freq = 500) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ac = new AudioCtx();
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.type = type === 'shoot' ? 'square' : 'sawtooth';
+      osc.frequency.value = freq;
+      gain.gain.value = type === 'shoot' ? 0.05 : 0.1;
+      osc.connect(gain);
+      gain.connect(ac.destination);
+      osc.start();
+      const dur = type === 'shoot' ? 0.08 : 0.2;
+      gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur);
+      osc.stop(ac.currentTime + dur);
+    }
+
+    function launchEnemyAircraft() {
+      const base = enemyBases[Math.floor(Math.random() * enemyBases.length)];
+      const typeKeys = Object.keys(ENEMY_AIRCRAFT);
+      const type = typeKeys[Math.floor(Math.random() * typeKeys.length)];
+      const typeData = ENEMY_AIRCRAFT[type];
+
+      const altitude = typeData.altitude[Math.floor(Math.random() * typeData.altitude.length)];
+      const targetY = rand(HEIGHT * 0.15, HEIGHT * 0.8);
+      const targetX = rand(WIDTH * 0.1, WIDTH * 0.5);
+      const speed = rand(typeData.speed.min, typeData.speed.max) / 3600;
+
+      aircraft.push({
+        x: base.x,
+        y: base.y,
+        altitude,
+        targetX,
+        targetY,
+        speed,
+        radius: typeData.size,
+        hp: typeData.hp,
+        angle: 0,
+        trail: [],
+        shootTimer: rand(3, 5),
+        missileCount: typeData.missiles,
+        type,
+        typeData,
+        maneuverTimer: rand(1, 3),
+        maneuverX: 0,
+        maneuverY: 0
+      });
+    }
+
+    function launchPlayerAircraft() {
+      const typeKeys = Object.keys(PLAYER_AIRCRAFT);
+      const type = typeKeys[Math.floor(Math.random() * typeKeys.length)];
+      const typeData = PLAYER_AIRCRAFT[type];
+      const altitude = typeData.altitude[Math.floor(Math.random() * typeData.altitude.length)];
+      const startY = rand(HEIGHT * 0.2, HEIGHT * 0.8);
+
+      playerAircraft.push({
+        x: WIDTH * 0.08,
+        y: startY,
+        altitude,
+        targetPlane: aircraft[0] || null,
+        speed: rand(typeData.speed.min, typeData.speed.max) / 3600,
+        radius: typeData.size,
+        hp: typeData.hp,
+        angle: 0,
+        trail: [],
+        shootTimer: rand(2, 4),
+        missileCount: typeData.missiles,
+        type,
+        typeData,
+        isPlayer: true
+      });
+    }
+
+    function shootBullet(target) {
+      const dx = target.x - defenseBase.x;
+      const dy = getAltitudeYPos(target.altitude) - defenseBase.y;
+      const d = Math.hypot(dx, dy);
+      if (d > defenseBase.range) return;
+
+      const angle = Math.atan2(dy, dx);
+      bullets.push({
+        x: defenseBase.x,
+        y: defenseBase.y,
+        vx: Math.cos(angle) * 700,
+        vy: Math.sin(angle) * 700,
+        r: 8,
+        life: 8,
+        angle,
+        targetAltitude: target.altitude
+      });
+      playTone('shoot', 800);
+      defenseBase.lastShot = performance.now();
+    }
+
+    function launchMissile(fromPlane) {
+      const targetY = rand(HEIGHT * 0.15, HEIGHT * 0.8);
+      const targetX = rand(WIDTH * 0.08, WIDTH * 0.5);
+      const targetAlt = rand(300, 2000);
+
+      missiles.push({
+        x: fromPlane.x,
+        y: getAltitudeYPos(fromPlane.altitude),
+        altitude: fromPlane.altitude,
+        targetX,
+        targetY,
+        targetAlt,
+        speed: rand(250, 350),
+        radius: 10,
+        hp: 1,
+        angle: 0,
+        trail: [],
+        type: Math.random() > 0.5 ? 'КАБ' : 'КАР',
+        guidance: true
+      });
+    }
+
+    function createExplosion(x, y, altitude, size = 'medium') {
+      const amount = size === 'big' ? 60 : size === 'medium' ? 35 : 15;
+      const color = size === 'big' ? '#ff2500' : size === 'medium' ? '#ff6600' : '#ffaa00';
+
+      for (let i = 0; i < amount; i++) {
+        particles.push({
+          x, y,
+          vx: rand(-300, 300),
+          vy: rand(-300, 300),
+          life: rand(0.6, 1.5),
+          r: rand(2, 8),
+          color
+        });
+      }
+
+      explosions.push({
+        x, y,
+        r: 10,
+        maxR: size === 'big' ? 120 : size === 'medium' ? 70 : 40,
+        life: 0.5,
+        altitude,
+        color
+      });
+
+      playTone('hit', size === 'big' ? 140 : 200);
+    }
+
+    function updateEnemyAircraft(dt) {
+      for (let i = aircraft.length - 1; i >= 0; i--) {
+        const p = aircraft[i];
+        const dx = p.targetX - p.x;
+        const dy = p.targetY - p.y;
+        const d = Math.hypot(dx, dy);
+
+        p.angle = Math.atan2(dy, dx);
+        p.x += Math.cos(p.angle) * p.speed * dt;
+        p.y += Math.sin(p.angle) * p.speed * dt;
+
+        p.maneuverTimer -= dt;
+        if (p.maneuverTimer <= 0) {
+          p.maneuverX = rand(-0.3, 0.3);
+          p.maneuverY = rand(-0.3, 0.3);
+          p.maneuverTimer = rand(1, 3);
+        }
+
+        p.x += p.maneuverX * p.speed * dt;
+        p.y += p.maneuverY * p.speed * dt;
+
+        p.trail.push({ x: p.x, y: getAltitudeYPos(p.altitude) });
+        if (p.trail.length > 40) p.trail.shift();
+
+        p.shootTimer -= dt;
+        if (p.shootTimer <= 0 && p.missileCount > 0) {
+          launchMissile(p);
+          p.missileCount -= 1;
+          p.shootTimer = rand(2, 4);
+          playTone('shoot', 400);
+        }
+
+        if (d < 60 || p.x < 0 || p.x > WIDTH) {
+          aircraft.splice(i, 1);
+        }
+      }
+    }
+
+    function updatePlayerAircraft(dt) {
+      for (let i = playerAircraft.length - 1; i >= 0; i--) {
+        const p = playerAircraft[i];
+
+        if (!p.targetPlane || p.targetPlane.hp <= 0) {
+          p.targetPlane = aircraft.find(a => a.hp > 0) || null;
+        }
+
+        let targetX = WIDTH * 0.5;
+        let targetY = HEIGHT * 0.5;
+        let targetAlt = 5000;
+
+        if (p.targetPlane) {
+          targetX = p.targetPlane.x;
+          targetY = p.targetPlane.y;
+          targetAlt = p.targetPlane.altitude;
+        }
+
+        const dx = targetX - p.x;
+        const dy = getAltitudeYPos(targetAlt) - getAltitudeYPos(p.altitude);
+        const d = Math.hypot(dx, dy);
+
+        p.angle = Math.atan2(dy, dx);
+        p.x += Math.cos(p.angle) * p.speed * dt;
+        p.y += Math.sin(p.angle) * p.speed * dt;
+
+        const altDiff = targetAlt - p.altitude;
+        p.altitude += altDiff * 0.3 * dt;
+
+        p.trail.push({ x: p.x, y: getAltitudeYPos(p.altitude) });
+        if (p.trail.length > 35) p.trail.shift();
+
+        if (p.targetPlane && d < 80 && Math.abs(p.altitude - p.targetPlane.altitude) < 800) {
+          p.shootTimer -= dt;
+          if (p.shootTimer <= 0 && p.missileCount > 0) {
+            p.targetPlane.hp -= 1;
+            if (p.targetPlane.hp <= 0) {
+              createExplosion(p.targetPlane.x, getAltitudeYPos(p.targetPlane.altitude), p.targetPlane.altitude, 'medium');
+              aircraft.splice(aircraft.indexOf(p.targetPlane), 1);
+              score += 150;
+            }
+            p.missileCount -= 1;
+            p.shootTimer = rand(1, 2);
+            playTone('shoot', 600);
+          }
+        }
+
+        if (p.x > WIDTH + 50 || p.x < -50 || p.altitude < 0) {
+          playerAircraft.splice(i, 1);
+        }
+      }
+    }
+
+    function updateMissiles(dt) {
+      for (let i = missiles.length - 1; i >= 0; i--) {
+        const m = missiles[i];
+        const dx = m.targetX - m.x;
+        const dy = m.targetY - m.y;
+        const d = Math.hypot(dx, dy);
+
+        m.angle = Math.atan2(dy, dx);
+        m.x += Math.cos(m.angle) * m.speed * dt;
+        m.y += Math.sin(m.angle) * m.speed * dt;
+
+        const altDiff = m.targetAlt - m.altitude;
+        m.altitude += altDiff * 0.4 * dt;
+
+        m.trail.push({ x: m.x, y: getAltitudeYPos(m.altitude) });
+        if (m.trail.length > 50) m.trail.shift();
+
+        if (d < 40) {
+          createExplosion(m.targetX, m.targetY, m.altitude, 'big');
+          missiles.splice(i, 1);
+          lives -= 1;
+          if (lives <= 0) gameOver = true;
+          continue;
+        }
+
+        if (m.x < 0 || m.x > WIDTH || m.y < 0 || m.y > HEIGHT) {
+          missiles.splice(i, 1);
+        }
+      }
+    }
+
+    function updateBullets(dt) {
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.life -= dt;
+
+        if (b.life <= 0 || b.x < 0 || b.x > WIDTH || b.y < 0 || b.y > HEIGHT) {
+          bullets.splice(i, 1);
+          continue;
+        }
+
+        for (let j = aircraft.length - 1; j >= 0; j--) {
+          const p = aircraft[j];
+          const pY = getAltitudeYPos(p.altitude);
+          const d = dist(b.x, b.y, p.x, pY);
+          const difficulty = 1 + (p.altitude / defenseBase.maxAltitude) * 0.8;
+
+          if (d < (b.r + p.radius) * difficulty) {
+            bullets.splice(i, 1);
+            p.hp -= 1;
+            createExplosion(p.x, pY, p.altitude, 'small');
+
+            if (p.hp <= 0) {
+              aircraft.splice(j, 1);
+              score += 100 + Math.floor(p.altitude / 1000) * 50;
+              selectedTarget = null;
+            }
+            break;
+          }
+        }
+
+        for (let j = missiles.length - 1; j >= 0; j--) {
+          const m = missiles[j];
+          const mY = getAltitudeYPos(m.altitude);
+          const d = dist(b.x, b.y, m.x, mY);
+
+          if (d < b.r + m.radius) {
+            bullets.splice(i, 1);
+            m.hp -= 1;
+            createExplosion(m.x, mY, m.altitude, 'small');
+
+            if (m.hp <= 0) {
+              missiles.splice(j, 1);
+              score += 75;
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    function updateExplosions(dt) {
+      for (let i = explosions.length - 1; i >= 0; i--) {
+        const e = explosions[i];
+        e.r += (e.maxR - e.r) * dt * 12;
+        e.life -= dt;
+        if (e.life <= 0) explosions.splice(i, 1);
+      }
+    }
+
+    function updateParticles(dt) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= dt;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+    }
+
+    function updateUI() {
+      scoreEl.textContent = score;
+      livesEl.textContent = lives;
+      waveEl.textContent = wave;
+
+      const su30 = aircraft.filter(a => a.type === 'Су-30' || a.type === 'Су-35').length;
+      const su57 = aircraft.filter(a => a.type === 'Су-57').length;
+      document.getElementById('su30count').textContent = su30;
+      document.getElementById('su57count').textContent = su57;
+      document.getElementById('missileCount').textContent = missiles.length;
+
+      const su27 = playerAircraft.filter(a => a.type === 'Су-27').length;
+      const mig29 = playerAircraft.filter(a => a.type === 'МіГ-29').length;
+      const f16 = playerAircraft.filter(a => a.type === 'F-16').length;
+
+      document.getElementById('su27count').textContent = su27;
+      document.getElementById('mig29count').textContent = mig29;
+      document.getElementById('f16count').textContent = f16;
+
+      const occupied = (occupiedZones.length * 30) / 100;
+      document.getElementById('occupied').textContent = Math.min(100, Math.round((occupied * 100) / 3)) + '%';
+      document.getElementById('safe').textContent = (100 - Math.min(100, Math.round((occupied * 100) / 3))) + '%';
+    }
+
+    function drawBackground() {
+      mapCtx.fillStyle = '#e8e3da';
+      mapCtx.fillRect(0, 0, WIDTH, HEIGHT);
+
+      mapCtx.strokeStyle = 'rgba(100, 100, 100, 0.15)';
+      mapCtx.lineWidth = 1;
+
+      for (let alt = 0; alt <= defenseBase.maxAltitude; alt += 2000) {
+        const y = getAltitudeYPos(alt);
+        mapCtx.beginPath();
+        mapCtx.moveTo(0, y);
+        mapCtx.lineTo(WIDTH, y);
+        mapCtx.stroke();
+      }
+
+      const horizonY = getAltitudeYPos(0);
+      mapCtx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+      mapCtx.lineWidth = 2;
+      mapCtx.beginPath();
+      mapCtx.moveTo(0, horizonY);
+      mapCtx.lineTo(WIDTH, horizonY);
+      mapCtx.stroke();
+    }
+
+    function drawUkraineMap() {
+      mapCtx.fillStyle = '#d9d2c6';
+      mapCtx.beginPath();
+      mapCtx.moveTo(100, 150);
+      mapCtx.lineTo(180, 100);
+      mapCtx.lineTo(250, 110);
+      mapCtx.lineTo(290, 180);
+      mapCtx.lineTo(310, 280);
+      mapCtx.lineTo(350, 350);
+      mapCtx.lineTo(380, 420);
+      mapCtx.lineTo(400, 570);
+      mapCtx.lineTo(380, 730);
+      mapCtx.lineTo(300, 770);
+      mapCtx.lineTo(180, 780);
+      mapCtx.lineTo(80, 740);
+      mapCtx.lineTo(50, 600);
+      mapCtx.lineTo(30, 420);
+      mapCtx.lineTo(40, 280);
+      mapCtx.closePath();
+      mapCtx.fill();
+
+      mapCtx.fillStyle = '#addbee';
+      mapCtx.fillRect(0, 0, 60, HEIGHT);
+
+      mapCtx.strokeStyle = '#4a4a4a';
+      mapCtx.lineWidth = 2.5;
+      mapCtx.stroke();
+
+      occupiedZones.forEach(zone => {
+        mapCtx.fillStyle = 'rgba(140, 80, 70, 0.65)';
+        mapCtx.fillRect(zone.x, zone.y, zone.w, zone.h);
+        mapCtx.strokeStyle = 'rgba(220, 40, 40, 0.9)';
+        mapCtx.lineWidth = 2.5;
+        mapCtx.setLineDash([6, 4]);
+        mapCtx.strokeRect(zone.x, zone.y, zone.w, zone.h);
+        mapCtx.setLineDash([]);
+      });
+
+      mapCtx.fillStyle = '#1b1b1b';
+      mapCtx.font = 'bold 24px Arial';
+      mapCtx.fillText('Україна', 150, HEIGHT - 50);
+    }
+
+    function drawAircraftModel(x, y, angle, color, size, type) {
+      mapCtx.save();
+      mapCtx.translate(x, y);
+      mapCtx.rotate(angle);
+
+      mapCtx.fillStyle = color;
+      mapCtx.fillRect(-size * 0.7, -size * 0.35, size * 1.4, size * 0.7);
+      mapCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      mapCtx.fillRect(-size * 0.5, -size * 0.15, size, size * 0.3);
+      mapCtx.fillStyle = color;
+      mapCtx.fillRect(-size * 1.2, -size * 0.2, size * 0.8, size * 0.4);
+      mapCtx.fillRect(size * 0.4, -size * 0.2, size * 0.8, size * 0.4);
+
+      mapCtx.restore();
+    }
+
+    function drawAircraft() {
+      for (const p of aircraft) {
+        const pY = getAltitudeYPos(p.altitude);
+
+        mapCtx.strokeStyle = 'rgba(255, 150, 0, 0.5)';
+        mapCtx.lineWidth = 2;
+        mapCtx.beginPath();
+        if (p.trail.length > 0) {
+          mapCtx.moveTo(p.trail[0].x, p.trail[0].y);
+          for (let i = 1; i < p.trail.length; i++) {
+            mapCtx.lineTo(p.trail[i].x, p.trail[i].y);
+          }
+        }
+        mapCtx.stroke();
+
+        drawAircraftModel(p.x, pY, p.angle, p.typeData.color, p.typeData.size, p.type);
+
+        const hpWidth = 25 * (p.hp / p.typeData.hp);
+        mapCtx.fillStyle = p.hp > 1 ? '#ffff00' : '#ff5555';
+        mapCtx.fillRect(p.x - 12.5, pY - 28, hpWidth, 3);
+        mapCtx.strokeStyle = '#ffffff';
+        mapCtx.strokeRect(p.x - 12.5, pY - 28, 25, 3);
+
+        mapCtx.fillStyle = '#ff6600';
+        mapCtx.font = 'bold 9px Arial';
+        mapCtx.fillText(Math.floor(p.altitude) + 'м', p.x + 18, pY - 12);
+
+        if (selectedTarget === p) {
+          mapCtx.strokeStyle = '#ffff00';
+          mapCtx.lineWidth = 3;
+          mapCtx.beginPath();
+          mapCtx.arc(p.x, pY, 40, 0, Math.PI * 2);
+          mapCtx.stroke();
+        }
+      }
+    }
+
+    function drawPlayerAircraft() {
+      for (const p of playerAircraft) {
+        const pY = getAltitudeYPos(p.altitude);
+
+        mapCtx.strokeStyle = 'rgba(0, 150, 255, 0.5)';
+        mapCtx.lineWidth = 2;
+        mapCtx.beginPath();
+        if (p.trail.length > 0) {
+          mapCtx.moveTo(p.trail[0].x, p.trail[0].y);
+          for (let i = 1; i < p.trail.length; i++) {
+            mapCtx.lineTo(p.trail[i].x, p.trail[i].y);
+          }
+        }
+        mapCtx.stroke();
+
+        drawAircraftModel(p.x, pY, p.angle, p.typeData.color, p.typeData.size, p.type);
+
+        mapCtx.fillStyle = '#00ff00';
+        mapCtx.font = 'bold 9px Arial';
+        mapCtx.fillText(p.type, p.x + 18, pY - 12);
+      }
+    }
+
+    function drawMissiles() {
+      for (const m of missiles) {
+        const mY = getAltitudeYPos(m.altitude);
+
+        mapCtx.strokeStyle = 'rgba(255, 100, 0, 0.6)';
+        mapCtx.lineWidth = 2;
+        mapCtx.beginPath();
+        if (m.trail.length > 0) {
+          mapCtx.moveTo(m.trail[0].x, m.trail[0].y);
+          for (let i = 1; i < m.trail.length; i++) {
+            mapCtx.lineTo(m.trail[i].x, m.trail[i].y);
+          }
+        }
+        mapCtx.stroke();
+
+        mapCtx.save();
+        mapCtx.translate(m.x, mY);
+        mapCtx.rotate(m.angle);
+
+        mapCtx.fillStyle = '#ff5555';
+        mapCtx.fillRect(-6, -4, 12, 8);
+        mapCtx.fillStyle = '#ffaa00';
+        mapCtx.fillRect(-4, -3, 8, 2);
+        mapCtx.fillRect(-3, 2, 6, 2);
+
+        mapCtx.restore();
+
+        mapCtx.fillStyle = m.type === 'КАБ' ? '#ffaa00' : '#ff6600';
+        mapCtx.font = 'bold 8px Arial';
+        mapCtx.fillText(m.type, m.x + 15, mY - 8);
+      }
+    }
+
+    function drawBullets() {
+      for (const b of bullets) {
+        mapCtx.fillStyle = '#ffff00';
+        mapCtx.beginPath();
+        mapCtx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        mapCtx.fill();
+
+        mapCtx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
+        mapCtx.lineWidth = 2;
+        mapCtx.beginPath();
+        mapCtx.moveTo(b.x, b.y);
+        mapCtx.lineTo(b.x - b.vx * 0.04, b.y - b.vy * 0.04);
+        mapCtx.stroke();
+      }
+    }
+
+    function drawExplosions() {
+      for (const e of explosions) {
+        mapCtx.fillStyle = e.color + ', ' + e.life + ')';
+        mapCtx.beginPath();
+        mapCtx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+        mapCtx.fill();
+
+        mapCtx.strokeStyle = e.color + ', ' + (e.life * 0.7) + ')';
+        mapCtx.lineWidth = 3;
+        mapCtx.stroke();
+      }
+    }
+
+    function drawParticles() {
+      for (const p of particles) {
+        mapCtx.fillStyle = p.color;
+        mapCtx.globalAlpha = p.life;
+        mapCtx.fillRect(p.x, p.y, p.r, p.r);
+        mapCtx.globalAlpha = 1;
+      }
+    }
+
+    function drawDefenseBase() {
+      mapCtx.save();
+      mapCtx.translate(defenseBase.x, defenseBase.y);
+
+      mapCtx.fillStyle = 'rgba(65, 105, 225, 0.2)';
+      mapCtx.beginPath();
+      mapCtx.arc(0, 0, 100, 0, Math.PI * 2);
+      mapCtx.fill();
+
+      mapCtx.strokeStyle = 'rgba(65, 105, 225, 0.5)';
+      mapCtx.lineWidth = 1.5;
+      mapCtx.stroke();
+
+      mapCtx.fillStyle = '#4169e1';
+      mapCtx.beginPath();
+      mapCtx.arc(0, 0, defenseBase.radius, 0, Math.PI * 2);
+      mapCtx.fill();
+
+      mapCtx.strokeStyle = '#ffd700';
+      mapCtx.lineWidth = 2.5;
+      mapCtx.stroke();
+
+      mapCtx.strokeStyle = '#ffff00';
+      mapCtx.lineWidth = 2;
+      mapCtx.beginPath();
+      mapCtx.moveTo(0, -defenseBase.radius);
+      mapCtx.lineTo(0, -defenseBase.radius - 18);
+      mapCtx.stroke();
+
+      mapCtx.restore();
+
+      mapCtx.fillStyle = '#ffd700';
+      mapCtx.font = 'bold 10px Arial';
+      mapCtx.fillText(defenseBase.name, defenseBase.x - 20, defenseBase.y + 35);
+    }
+
+    function drawGameOver() {
+      if (!gameOver && lives > 0) return;
+
+      mapCtx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      mapCtx.fillRect(0, 0, WIDTH, HEIGHT);
+
+      mapCtx.fillStyle = lives > 0 ? '#6ef3a0' : '#ff5c5c';
+      mapCtx.font = 'bold 70px Arial';
+      mapCtx.textAlign = 'center';
+      mapCtx.fillText(lives > 0 ? 'ПЕРЕМОГА' : 'ПОРАЗКА', WIDTH / 2, HEIGHT / 2);
+
+      mapCtx.fillStyle = '#ffd700';
+      mapCtx.font = 'bold 24px Arial';
+      mapCtx.fillText('Рахунок: ' + score, WIDTH / 2, HEIGHT / 2 + 60);
+
+      if (lives <= 0) {
+        mapCtx.fillStyle = '#ffaa00';
+        mapCtx.font = '16px Arial';
+        mapCtx.fillText('Натисніть R для перезапуску', WIDTH / 2, HEIGHT / 2 + 110);
+      }
+    }
+
+    let lastTime = 0;
+    let spawnTimer = 0;
+    let playerSpawnTimer = 0;
+
+    function loop(timestamp) {
+      const dt = Math.min(0.033, (timestamp - lastTime) / 1000 || 0.016);
+      lastTime = timestamp;
+
+      if (!gameOver) {
+        updateEnemyAircraft(dt);
+        updatePlayerAircraft(dt);
+        updateMissiles(dt);
+        updateBullets(dt);
+        updateExplosions(dt);
+        updateParticles(dt);
+        updateUI();
+
+        spawnTimer -= dt;
+        if (spawnTimer <= 0 && aircraft.length < 1 + Math.floor(wave / 2)) {
+          launchEnemyAircraft();
+          spawnTimer = 4 + Math.random() * 3;
+        }
+
+        playerSpawnTimer -= dt;
+        if (playerSpawnTimer <= 0 && playerAircraft.length < wave) {
+          launchPlayerAircraft();
+          playerSpawnTimer = 8 + Math.random() * 4;
+        }
+
+        if (autoMode && performance.now() - defenseBase.lastShot > defenseBase.shootInterval * 1000) {
+          let closest = null;
+          let closestDist = defenseBase.range;
+
+          for (const p of aircraft) {
+            const pY = getAltitudeYPos(p.altitude);
+            const d = dist(defenseBase.x, defenseBase.y, p.x, pY);
+            if (d < closestDist) {
+              closest = p;
+              closestDist = d;
+            }
+          }
+
+          if (closest) {
+            shootBullet(closest);
+          }
+        }
+
+        if (score > wave * 300) {
+          wave += 1;
+          spawnTimer = 2;
+        }
+      }
+
+      drawBackground();
+      drawUkraineMap();
+      drawMissiles();
+      drawExplosions();
+      drawParticles();
+      drawBullets();
+      drawAircraft();
+      drawPlayerAircraft();
+      drawDefenseBase();
+      drawGameOver();
+
+      requestAnimationFrame(loop);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        if (!gameOver && selectedTarget && performance.now() - defenseBase.lastShot > defenseBase.shootInterval * 1000) {
+          shootBullet(selectedTarget);
+        }
+      }
+
+      if (e.key.toLowerCase() === 'r' && gameOver) {
+        location.reload();
+      }
+    });
+
+    mapCanvas.addEventListener('click', (e) => {
+      const rect = mapCanvas.getBoundingClientRect();
+      const clickX = (e.clientX - rect.left) * (mapCanvas.width / rect.width);
+      const clickY = (e.clientY - rect.top) * (mapCanvas.height / rect.height);
+
+      for (const target of aircraft) {
+        const pY = getAltitudeYPos(target.altitude);
+        if (dist(clickX, clickY, target.x, pY) < 35) {
+          selectedTarget = target;
+          playTone('shoot', 900);
+          break;
+        }
+      }
+    });
+
+    autoBtn.addEventListener('click', () => {
+      autoMode = !autoMode;
+      autoBtn.textContent = autoMode ? 'АВТОМАТИЧНИЙ ВОГОНЬ' : 'РУЧНИЙ ВОГОНЬ';
+    });
+
+    updateUI();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
